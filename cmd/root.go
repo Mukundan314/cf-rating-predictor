@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -29,7 +30,7 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "c", "config file (default is $HOME/.cf-rating-predictor.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.cf-rating-predictor.yaml)")
 }
 
 func initConfig() {
@@ -50,10 +51,13 @@ func initConfig() {
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err == nil {
-		logrus.WithField("configFile", viper.ConfigFileUsed()).Info("Using Config File")
+		logrus.WithField("configFile", viper.ConfigFileUsed()).Info("Using config file")
 	}
 
 	viper.WatchConfig()
+	viper.OnConfigChange(func(e fsnotify.Event) {
+		logrus.WithField("configFile", e.Name).Info("Config file changed")
+	})
 }
 
 func run(cmd *cobra.Command, args []string) {
