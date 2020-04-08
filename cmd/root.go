@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -28,7 +29,7 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.cf-rating-predictor.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "c", "config file (default is $HOME/.cf-rating-predictor.yaml)")
 }
 
 func initConfig() {
@@ -48,7 +49,9 @@ func initConfig() {
 	viper.SetEnvPrefix("cf_rating_predictor")
 	viper.AutomaticEnv()
 
-	viper.ReadInConfig()
+	if err := viper.ReadInConfig(); err == nil {
+		logrus.WithField("configFile", viper.ConfigFileUsed()).Info("Using Config File")
+	}
 
 	viper.WatchConfig()
 }
