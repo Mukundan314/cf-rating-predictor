@@ -1,14 +1,10 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/fsnotify/fsnotify"
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 )
 
@@ -39,8 +35,7 @@ func initConfig() {
 	} else {
 		home, err := homedir.Dir()
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			logrus.WithError(err).Fatal()
 		}
 
 		viper.AddConfigPath(home)
@@ -50,14 +45,24 @@ func initConfig() {
 	viper.SetEnvPrefix("cf_rating_predictor")
 	viper.AutomaticEnv()
 
-	if err := viper.ReadInConfig(); err == nil {
-		logrus.WithField("configFile", viper.ConfigFileUsed()).Info("Using config file")
+	err := viper.ReadInConfig()
+
+	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		logrus.WithError(err).Info("No config file found")
+	} else {
+		if err == nil {
+			logrus.WithField("configFile", viper.ConfigFileUsed()).Info("Using config file")
+		} else {
+			logrus.WithError(err).Error("Error when reading config")
+		}
+
+		viper.WatchConfig()
 	}
 
-	viper.WatchConfig()
 	viper.OnConfigChange(func(e fsnotify.Event) {
 		logrus.WithField("configFile", e.Name).Info("Config file changed")
 	})
+
 }
 
 func run(cmd *cobra.Command, args []string) {
