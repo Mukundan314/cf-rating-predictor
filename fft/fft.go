@@ -5,8 +5,11 @@ import (
 	"math/cmplx"
 )
 
-func FFT(a []complex128, inv bool) {
+func FFT(a []complex128, inv bool) []complex128 {
 	n := len(a)
+
+	b := make([]complex128, n)
+	copy(b, a)
 
 	w := make([]complex128, n>>1)
 	for i := 0; i < n>>1; i++ {
@@ -24,7 +27,7 @@ func FFT(a []complex128, inv bool) {
 			rev[i] |= n >> 1
 		}
 		if i < rev[i] {
-			a[i], a[rev[i]] = a[rev[i]], a[i]
+			b[i], b[rev[i]] = b[rev[i]], b[i]
 		}
 	}
 
@@ -33,9 +36,9 @@ func FFT(a []complex128, inv bool) {
 		for i := 0; i < n; i += step {
 			pw := 0
 			for j := i; j < i+half; j++ {
-				v := a[j+half] * w[pw]
-				a[j+half] = a[j] - v
-				a[j] += v
+				v := b[j+half] * w[pw]
+				b[j+half] = b[j] - v
+				b[j] += v
 				pw += diff
 			}
 		}
@@ -44,7 +47,9 @@ func FFT(a []complex128, inv bool) {
 
 	if inv {
 		for i := 0; i < n; i++ {
-			a[i] /= complex(float64(n), 0.0)
+			b[i] /= complex(float64(n), 0.0)
 		}
 	}
+
+	return b
 }
