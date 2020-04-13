@@ -1,0 +1,14 @@
+{
+	"manifest_version": 2,
+	"name": "cf-rating-predictor",
+	"version": "0.0",
+
+	"description": "Predict Codeforces Rating during Contests",
+
+	"content_scripts": [
+		{
+			"matches": ["*://codeforces.com/contest/*/standings*"],
+			"js": ["main.js"]
+		}
+	]
+}
