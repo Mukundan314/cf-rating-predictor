@@ -14,9 +14,9 @@ func FFT(a []complex128, inv bool) []complex128 {
 	w := make([]complex128, n>>1)
 	for i := 0; i < n>>1; i++ {
 		if inv {
-			w[i] = cmplx.Rect(1, (-2.0*math.Pi*float64(i))/float64(n))
+			w[i] = cmplx.Rect(1, -2.0*math.Pi*float64(i)/float64(n))
 		} else {
-			w[i] = cmplx.Rect(1, (2.0*math.Pi*float64(i))/float64(n))
+			w[i] = cmplx.Rect(1, 2.0*math.Pi*float64(i)/float64(n))
 		}
 	}
 
@@ -31,7 +31,7 @@ func FFT(a []complex128, inv bool) []complex128 {
 		}
 	}
 
-	for step := 2; step <= n; {
+	for step := 2; step <= n; step <<= 1 {
 		half, diff := step>>1, n/step
 		for i := 0; i < n; i += step {
 			pw := 0
@@ -42,7 +42,6 @@ func FFT(a []complex128, inv bool) []complex128 {
 				pw += diff
 			}
 		}
-		step <<= 1
 	}
 
 	if inv {
