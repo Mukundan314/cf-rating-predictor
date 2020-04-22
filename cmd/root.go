@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -9,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/cheran-senthil/cf-rating-predictor/api"
 	"github.com/cheran-senthil/cf-rating-predictor/db"
 )
 
@@ -74,7 +76,12 @@ func run(cmd *cobra.Command, args []string) {
 
 	d := db.NewDB(time.Hour * 1)
 
-	for _ = range time.NewTicker(time.Minute).C {
-		d.Update()
-	}
+	go func() {
+		for _ = range time.NewTicker(time.Minute).C {
+			d.Update()
+		}
+	}()
+
+	http.Handle("/api/contest.ratingChanges", api.RatingChangesHandler{d})
+	logrus.Fatal(http.ListenAndServe(":8080", nil))
 }
