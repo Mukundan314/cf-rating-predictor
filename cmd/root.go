@@ -1,11 +1,15 @@
 package cmd
 
 import (
+	"time"
+
 	"github.com/fsnotify/fsnotify"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/cheran-senthil/cf-rating-predictor/db"
 )
 
 var (
@@ -66,4 +70,11 @@ func initConfig() {
 }
 
 func run(cmd *cobra.Command, args []string) {
+	logrus.SetLevel(logrus.DebugLevel)
+
+	d := db.NewDB(time.Hour * 1)
+
+	for _ = range time.NewTicker(time.Minute).C {
+		d.Update()
+	}
 }
