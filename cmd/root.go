@@ -34,9 +34,11 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "Config file (default $HOME/.cf-rating-predictor.yaml)")
+
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enables more verbose logging.")
+	rootCmd.PersistentFlags().StringP("addr", "a", ":8080", "Address to serve website.")
 	rootCmd.PersistentFlags().DurationP("update-interval", "i", time.Minute, "")
-	rootCmd.PersistentFlags().DurationP("update-rating-before", "r", time.Hour, "Time before contest to update rating")
+	rootCmd.PersistentFlags().DurationP("update-rating-before", "r", time.Hour, "Time before contest to update rating.")
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
 }
@@ -102,5 +104,5 @@ func run(cmd *cobra.Command, args []string) {
 	mux.Handle("/api/contest.ratingChanges", api.RatingChangesHandler{Cache: c})
 
 	handler := cors.Default().Handler(mux)
-	logrus.Fatal(http.ListenAndServe(":8080", handler))
+	logrus.Fatal(http.ListenAndServe(viper.GetString("addr"), handler))
 }
