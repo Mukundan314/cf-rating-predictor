@@ -54,7 +54,7 @@ func intMax(a, b int) int {
 }
 
 func CalculateRatingChanges(previousRatings map[string]int, standingsRows []codeforces.RanklistRow) map[string]int {
-	contestants := make([]*contestant, 0, len(standingsRows)-1)
+	contestants := make([]*contestant, 0, len(standingsRows))
 
 	for _, standingsRow := range standingsRows {
 		var rating int
