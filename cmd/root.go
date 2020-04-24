@@ -33,6 +33,9 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.cf-rating-predictor.yaml)")
+	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enables more verbose logging.")
+
+	viper.BindPFlags(rootCmd.PersistentFlags())
 }
 
 func initConfig() {
@@ -72,13 +75,23 @@ func initConfig() {
 }
 
 func run(cmd *cobra.Command, args []string) {
-	logrus.SetLevel(logrus.DebugLevel)
+	if viper.GetBool("verbose") {
+		logrus.SetLevel(logrus.DebugLevel)
+	} else {
+		logrus.SetLevel(logrus.InfoLevel)
+	}
 
 	d := db.NewDB(time.Hour * 1)
 
 	go func() {
+		if err := d.Update(); err != nil {
+			logrus.WithError(err).Error()
+		}
+
 		for _ = range time.NewTicker(time.Minute).C {
-			d.Update()
+			if err := d.Update(); err != nil {
+				logrus.WithError(err).Error()
+			}
 		}
 	}()
 
