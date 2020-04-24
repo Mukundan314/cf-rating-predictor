@@ -6,6 +6,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	homedir "github.com/mitchellh/go-homedir"
+	"github.com/rs/cors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -97,6 +98,9 @@ func run(cmd *cobra.Command, args []string) {
 		}
 	}()
 
-	http.Handle("/api/contest.ratingChanges", api.RatingChangesHandler{Cache: c})
-	logrus.Fatal(http.ListenAndServe(":8080", nil))
+	mux := http.NewServeMux()
+	mux.Handle("/api/contest.ratingChanges", api.RatingChangesHandler{Cache: c})
+
+	handler := cors.Default().Handler(mux)
+	logrus.Fatal(http.ListenAndServe(":8080", handler))
 }
