@@ -43,7 +43,11 @@ func (c *Cache) GetRatingChanges(contestID int) []codeforces.RatingChange {
 	c.ratingLock.RLock()
 	defer c.ratingLock.RUnlock()
 
-	return c.ratingChanges[contestID]
+	if c.ratingChanges[contestID] != nil {
+		return c.ratingChanges[contestID]
+	}
+
+	return []codeforces.RatingChange{}
 }
 
 func (c *Cache) UpdateContestRatingChanges(contestID int) error {
