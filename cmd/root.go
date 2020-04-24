@@ -32,8 +32,10 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.cf-rating-predictor.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "Config file (default $HOME/.cf-rating-predictor.yaml)")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enables more verbose logging.")
+	rootCmd.PersistentFlags().DurationP("update-interval", "i", time.Minute, "")
+	rootCmd.PersistentFlags().DurationP("update-rating-before", "r", time.Hour, "Time before contest to update rating")
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
 }
@@ -81,14 +83,14 @@ func run(cmd *cobra.Command, args []string) {
 		logrus.SetLevel(logrus.InfoLevel)
 	}
 
-	c := cache.NewCache(time.Hour * 1)
+	c := cache.NewCache(viper.GetDuration("update-rating-before"))
 
 	go func() {
 		if err := c.Update(); err != nil {
 			logrus.WithError(err).Error()
 		}
 
-		for _ = range time.NewTicker(time.Minute).C {
+		for range time.NewTicker(viper.GetDuration("update-interval")).C {
 			if err := c.Update(); err != nil {
 				logrus.WithError(err).Error()
 			}
