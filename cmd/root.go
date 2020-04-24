@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/cheran-senthil/cf-rating-predictor/api"
-	"github.com/cheran-senthil/cf-rating-predictor/db"
+	"github.com/cheran-senthil/cf-rating-predictor/cache"
 )
 
 var (
@@ -81,20 +81,20 @@ func run(cmd *cobra.Command, args []string) {
 		logrus.SetLevel(logrus.InfoLevel)
 	}
 
-	d := db.NewDB(time.Hour * 1)
+	c := cache.NewCache(time.Hour * 1)
 
 	go func() {
-		if err := d.Update(); err != nil {
+		if err := c.Update(); err != nil {
 			logrus.WithError(err).Error()
 		}
 
 		for _ = range time.NewTicker(time.Minute).C {
-			if err := d.Update(); err != nil {
+			if err := c.Update(); err != nil {
 				logrus.WithError(err).Error()
 			}
 		}
 	}()
 
-	http.Handle("/api/contest.ratingChanges", api.RatingChangesHandler{d})
+	http.Handle("/api/contest.ratingChanges", api.RatingChangesHandler{Cache: c})
 	logrus.Fatal(http.ListenAndServe(":8080", nil))
 }

@@ -1,4 +1,4 @@
-package db
+package cache
 
 import (
 	"sync"
@@ -9,42 +9,44 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type DB struct {
-	userRating         map[string]int
-	ratingChanges      map[int][]codeforces.RatingChange
+type Cache struct {
 	updateRatingBefore time.Duration
 	lastUpdateTime     time.Time
-	ratingLock         sync.RWMutex
-	changesLock        sync.RWMutex
+
+	userRating map[string]int
+	ratingLock sync.RWMutex
+
+	ratingChanges map[int][]codeforces.RatingChange
+	changesLock   sync.RWMutex
 }
 
-func NewDB(updateRatingBefore time.Duration) *DB {
-	return &DB{
+func NewCache(updateRatingBefore time.Duration) *Cache {
+	return &Cache{
 		userRating:         make(map[string]int),
 		ratingChanges:      make(map[int][]codeforces.RatingChange),
 		updateRatingBefore: updateRatingBefore,
 	}
 }
 
-func (d *DB) GetRating(handle string) int {
-	d.ratingLock.RLock()
-	defer d.ratingLock.RUnlock()
+func (c *Cache) GetRating(handle string) int {
+	c.ratingLock.RLock()
+	defer c.ratingLock.RUnlock()
 
-	if v, ok := d.userRating[handle]; ok {
+	if v, ok := c.userRating[handle]; ok {
 		return v
 	} else {
 		return 1500
 	}
 }
 
-func (d *DB) GetRatingChanges(contestID int) []codeforces.RatingChange {
-	d.ratingLock.RLock()
-	defer d.ratingLock.RUnlock()
+func (c *Cache) GetRatingChanges(contestID int) []codeforces.RatingChange {
+	c.ratingLock.RLock()
+	defer c.ratingLock.RUnlock()
 
-	return d.ratingChanges[contestID]
+	return c.ratingChanges[contestID]
 }
 
-func (d *DB) UpdateContestRatingChanges(contestID int) error {
+func (c *Cache) UpdateContestRatingChanges(contestID int) error {
 	logrus.WithField("contestID", contestID).Debug("Recomputing Rating Changes")
 
 	_, _, ranklistRows, err := codeforces.GetContestStandings(contestID, 1, 0, nil, 0, false)
@@ -56,7 +58,7 @@ func (d *DB) UpdateContestRatingChanges(contestID int) error {
 
 	for _, ranklistRow := range ranklistRows {
 		for _, member := range ranklistRow.Party.Members {
-			userRating[member.Handle] = d.GetRating(member.Handle)
+			userRating[member.Handle] = c.GetRating(member.Handle)
 		}
 	}
 
@@ -69,20 +71,20 @@ func (d *DB) UpdateContestRatingChanges(contestID int) error {
 			ContestID:               contestID,
 			Handle:                  handle,
 			RatingUpdateTimeSeconds: int(ratingUpdateTimeSeconds),
-			OldRating:               d.GetRating(handle),
-			NewRating:               d.GetRating(handle) + delta,
+			OldRating:               c.GetRating(handle),
+			NewRating:               c.GetRating(handle) + delta,
 		})
 	}
 
-	d.changesLock.Lock()
-	defer d.changesLock.Unlock()
+	c.changesLock.Lock()
+	defer c.changesLock.Unlock()
 
-	d.ratingChanges[contestID] = ratingChanges
+	c.ratingChanges[contestID] = ratingChanges
 
 	return nil
 }
 
-func (d *DB) UpdateUserRatings() error {
+func (c *Cache) UpdateUserRatings() error {
 	logrus.Debug("Updating User Ratings")
 
 	users, err := codeforces.GetUserRatedList(false)
@@ -90,19 +92,17 @@ func (d *DB) UpdateUserRatings() error {
 		return err
 	}
 
-	d.ratingLock.Lock()
-	defer d.ratingLock.Unlock()
+	c.ratingLock.Lock()
+	defer c.ratingLock.Unlock()
 
 	for _, user := range users {
-		d.userRating[user.Handle] = user.Rating
+		c.userRating[user.Handle] = user.Rating
 	}
 
 	return nil
 }
 
-func (d *DB) Update() error {
-	logrus.Debug("Updating DB")
-
+func (c *Cache) Update() error {
 	contests, err := codeforces.GetContestList(false)
 	if err != nil {
 		return err
@@ -111,15 +111,15 @@ func (d *DB) Update() error {
 	for _, contest := range contests {
 		startTime := time.Unix(int64(contest.StartTimeSeconds), 0)
 
-		if contest.Phase == "BEFORE" && time.Until(startTime) < d.updateRatingBefore && startTime.Sub(d.lastUpdateTime) > d.updateRatingBefore {
-			d.lastUpdateTime = time.Now()
-			if err := d.UpdateUserRatings(); err != nil {
+		if time.Until(startTime) < c.updateRatingBefore && startTime.Sub(c.lastUpdateTime) > c.updateRatingBefore {
+			c.lastUpdateTime = time.Now()
+			if err := c.UpdateUserRatings(); err != nil {
 				return err
 			}
 		}
 
 		if contest.Phase == "CODING" || contest.Phase == "PENDING_SYSTEM_TEST" {
-			if err := d.UpdateContestRatingChanges(contest.ID); err != nil {
+			if err := c.UpdateContestRatingChanges(contest.ID); err != nil {
 				return err
 			}
 		}

@@ -6,7 +6,7 @@ import (
 	"github.com/mukundan314/go-codeforces"
 )
 
-type db interface {
+type cache interface {
 	GetRating(handle string) int
 	GetRatingChanges(contestId int) []codeforces.RatingChange
 }

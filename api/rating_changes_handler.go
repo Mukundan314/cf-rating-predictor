@@ -9,7 +9,7 @@ import (
 )
 
 type RatingChangesHandler struct {
-	DB db
+	Cache cache
 }
 
 func (h RatingChangesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -52,7 +52,7 @@ func (h RatingChangesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	ratingChanges := h.DB.GetRatingChanges(contestID)
+	ratingChanges := h.Cache.GetRatingChanges(contestID)
 	result, err := json.Marshal(ratingChanges)
 
 	if err != nil {
