@@ -10,6 +10,21 @@
 		"96": "icons/icon@2.png"
 	},
 
+	"options_ui": {
+		"page": "options.html",
+		"browser_style": true,
+		"chrome_style": true
+	},
+
+	"permissions": ["storage"],
+	"optional_permissions": ["<all_urls>"],
+
+	"browser_specific_settings": {
+		"gecko": {
+			"id": "cf-rating-predictor@gmail.com"
+		}
+	},
+
 	"content_scripts": [
 		{
 			"matches": ["*://codeforces.com/contest/*/standings*"],
