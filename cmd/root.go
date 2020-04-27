@@ -38,7 +38,8 @@ func init() {
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enables more verbose logging.")
 	rootCmd.PersistentFlags().StringP("addr", "a", ":8080", "Address to serve website.")
 	rootCmd.PersistentFlags().DurationP("update-interval", "i", time.Minute, "")
-	rootCmd.PersistentFlags().DurationP("update-rating-before", "r", time.Hour, "Time before contest to update rating.")
+	rootCmd.PersistentFlags().DurationP("update-rating-before", "", time.Hour, "Duration before contest to update rating.")
+	rootCmd.PersistentFlags().DurationP("update-rating-changes-after", "", 24 * time.Hour, "Duration after contest to update rating changes.")
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
 }
@@ -86,15 +87,14 @@ func run(cmd *cobra.Command, args []string) {
 		logrus.SetLevel(logrus.InfoLevel)
 	}
 
-	c := cache.NewCache(viper.GetDuration("update-rating-before"))
+	c := cache.NewCache()
 
 	go func() {
-		if err := c.Update(); err != nil {
-			logrus.WithError(err).Error()
-		}
-
 		for range time.NewTicker(viper.GetDuration("update-interval")).C {
-			if err := c.Update(); err != nil {
+			if err := c.Update(
+				viper.GetDuration("update-rating-before"),
+				viper.GetDuration("update-rating-changes-after"),
+			); err != nil {
 				logrus.WithError(err).Error()
 			}
 		}

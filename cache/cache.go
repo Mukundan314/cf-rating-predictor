@@ -10,27 +10,25 @@ import (
 )
 
 type Cache struct {
-	updateRatingBefore time.Duration
-	lastUpdateTime     time.Time
+	lastUpdateTime time.Time
 
-	userRating map[string]int
-	ratingLock sync.RWMutex
+	userRating     map[string]int
+	userRatingLock sync.RWMutex
 
-	ratingChanges map[int][]codeforces.RatingChange
-	changesLock   sync.RWMutex
+	ratingChanges     map[int][]codeforces.RatingChange
+	ratingChangesLock sync.RWMutex
 }
 
-func NewCache(updateRatingBefore time.Duration) *Cache {
+func NewCache() *Cache {
 	return &Cache{
-		userRating:         make(map[string]int),
-		ratingChanges:      make(map[int][]codeforces.RatingChange),
-		updateRatingBefore: updateRatingBefore,
+		userRating:    make(map[string]int),
+		ratingChanges: make(map[int][]codeforces.RatingChange),
 	}
 }
 
 func (c *Cache) GetRating(handle string) int {
-	c.ratingLock.RLock()
-	defer c.ratingLock.RUnlock()
+	c.userRatingLock.RLock()
+	defer c.userRatingLock.RUnlock()
 
 	if v, ok := c.userRating[handle]; ok {
 		return v
@@ -40,8 +38,8 @@ func (c *Cache) GetRating(handle string) int {
 }
 
 func (c *Cache) GetRatingChanges(contestID int) []codeforces.RatingChange {
-	c.ratingLock.RLock()
-	defer c.ratingLock.RUnlock()
+	c.userRatingLock.RLock()
+	defer c.userRatingLock.RUnlock()
 
 	if c.ratingChanges[contestID] != nil {
 		return c.ratingChanges[contestID]
@@ -80,8 +78,8 @@ func (c *Cache) UpdateContestRatingChanges(contestID int) error {
 		})
 	}
 
-	c.changesLock.Lock()
-	defer c.changesLock.Unlock()
+	c.ratingChangesLock.Lock()
+	defer c.ratingChangesLock.Unlock()
 
 	c.ratingChanges[contestID] = ratingChanges
 
@@ -91,13 +89,15 @@ func (c *Cache) UpdateContestRatingChanges(contestID int) error {
 func (c *Cache) UpdateUserRatings() error {
 	logrus.Debug("Updating User Ratings")
 
+	c.lastUpdateTime = time.Now()
+
 	users, err := codeforces.GetUserRatedList(false)
 	if err != nil {
 		return err
 	}
 
-	c.ratingLock.Lock()
-	defer c.ratingLock.Unlock()
+	c.userRatingLock.Lock()
+	defer c.userRatingLock.Unlock()
 
 	for _, user := range users {
 		c.userRating[user.Handle] = user.Rating
@@ -106,23 +106,45 @@ func (c *Cache) UpdateUserRatings() error {
 	return nil
 }
 
-func (c *Cache) Update() error {
+func shouldUpdateRating(
+	contest codeforces.Contest,
+	updateRatingBeforeContest time.Duration,
+	lastUpdateTime time.Time,
+) bool {
+	startTime := time.Unix(int64(contest.StartTimeSeconds), 0)
+
+	return (time.Now().After(startTime.Add(-updateRatingBeforeContest)) &&
+		lastUpdateTime.Before(startTime.Add(-updateRatingBeforeContest)))
+}
+
+func shouldUpdateRatingChanges(
+	contest codeforces.Contest,
+	updateRatingChangesAfterContest time.Duration,
+) bool {
+	endTime := time.Unix(int64(contest.StartTimeSeconds+contest.DurationSeconds), 0)
+
+	return (contest.Phase != "BEFORE" &&
+		contest.Phase != "SYSTEM_TEST" &&
+		(time.Now().Before(endTime.Add(updateRatingChangesAfterContest)) || contest.Phase != "FINISHED"))
+}
+
+func (c *Cache) Update(
+	updateRatingBeforeContest time.Duration,
+	updateRatingChangesAfterContest time.Duration,
+) error {
 	contests, err := codeforces.GetContestList(false)
 	if err != nil {
 		return err
 	}
 
 	for _, contest := range contests {
-		startTime := time.Unix(int64(contest.StartTimeSeconds), 0)
-
-		if time.Until(startTime) < c.updateRatingBefore && startTime.Sub(c.lastUpdateTime) > c.updateRatingBefore {
-			c.lastUpdateTime = time.Now()
+		if shouldUpdateRating(contest, updateRatingBeforeContest, c.lastUpdateTime) {
 			if err := c.UpdateUserRatings(); err != nil {
 				return err
 			}
 		}
 
-		if contest.Phase == "CODING" || contest.Phase == "PENDING_SYSTEM_TEST" {
+		if shouldUpdateRatingChanges(contest, updateRatingChangesAfterContest) {
 			if err := c.UpdateContestRatingChanges(contest.ID); err != nil {
 				return err
 			}
