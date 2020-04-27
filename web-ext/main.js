@@ -14,6 +14,8 @@ getRatingChanges(contestId).then(ratingChanges => {
     deltas[ratingChange.handle] = ratingChange.newRating - ratingChange.oldRating
   })
 
+  let updateTime = new Date(ratingChanges[0].ratingUpdateTimeSeconds * 1000)
+
   let standingsTable = document.getElementsByClassName("standings")[0]
   let rows = Array.from(standingsTable.rows)
 
@@ -25,7 +27,13 @@ getRatingChanges(contestId).then(ratingChanges => {
 
     if (deltaCell.tagName == "TH") {
       deltaCell.innerHTML = "&Delta;"
-    } else if (!row.classList.contains("standingsStatisticsRow")) {
+    } else if (row.classList.contains("standingsStatisticsRow")) {
+      deltaCell.innerHTML = `
+      <span class="notice">${updateTime.getHours()}:${updateTime.getMinutes()}:${updateTime.getSeconds()}</span>
+      <br>
+      <span class="notice">${updateTime.getDate()}-${updateTime.getMonth().toString().padStart(2, '0')}-${updateTime.getFullYear()}</span>
+      `
+    } else {
       let handle = row.cells[1].getElementsByClassName("rated-user")[0].innerHTML
       if (deltas[handle] !== undefined) {
         deltaCell.innerHTML = (deltas[handle] > 0 ? '+' : '') + deltas[handle].toString()
