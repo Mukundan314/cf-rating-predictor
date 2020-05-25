@@ -39,7 +39,7 @@ func init() {
 	rootCmd.PersistentFlags().StringP("addr", "a", ":8080", "Address to serve website.")
 	rootCmd.PersistentFlags().DurationP("update-interval", "i", time.Minute, "")
 	rootCmd.PersistentFlags().DurationP("update-rating-before", "", time.Hour, "Duration before contest to update rating.")
-	rootCmd.PersistentFlags().DurationP("update-rating-changes-after", "", 24 * time.Hour, "Duration after contest to update rating changes.")
+	rootCmd.PersistentFlags().DurationP("update-rating-changes-after", "", 24*time.Hour, "Duration after contest to update rating changes.")
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
 }
@@ -76,6 +76,12 @@ func initConfig() {
 
 	viper.OnConfigChange(func(e fsnotify.Event) {
 		logrus.WithField("configFile", e.Name).Info("Config file changed")
+
+		if viper.GetBool("verbose") {
+			logrus.SetLevel(logrus.DebugLevel)
+		} else {
+			logrus.SetLevel(logrus.InfoLevel)
+		}
 	})
 
 }
