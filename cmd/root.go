@@ -40,6 +40,7 @@ func init() {
 	rootCmd.PersistentFlags().DurationP("update-interval", "i", time.Minute, "")
 	rootCmd.PersistentFlags().DurationP("update-rating-before", "", time.Hour, "Duration before contest to update rating.")
 	rootCmd.PersistentFlags().DurationP("update-rating-changes-after", "", 24*time.Hour, "Duration after contest to update rating changes.")
+	rootCmd.PersistentFlags().DurationP("clear-rating-changes-after", "", 24*time.Hour, "Duration after contest to clear rating changes from cache.")
 
 	viper.BindPFlags(rootCmd.PersistentFlags())
 }
@@ -100,6 +101,7 @@ func run(cmd *cobra.Command, args []string) {
 			if err := c.Update(
 				viper.GetDuration("update-rating-before"),
 				viper.GetDuration("update-rating-changes-after"),
+				viper.GetDuration("clear-rating-changes-after"),
 			); err != nil {
 				logrus.WithError(err).Error()
 			}

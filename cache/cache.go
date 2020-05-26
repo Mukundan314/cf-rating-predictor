@@ -106,6 +106,17 @@ func (c *Cache) UpdateUserRatings() error {
 	return nil
 }
 
+func (c *Cache) ClearContestRatingChanges(contestID int) {
+	if c.ratingChanges[contestID] != nil {
+		logrus.WithField("contestID", contestID).Debug("Clearing Rating Changes")
+
+		c.ratingChangesLock.Lock()
+		defer c.ratingChangesLock.Unlock()
+
+		c.ratingChanges[contestID] = nil
+	}
+}
+
 func shouldUpdateRating(
 	contest codeforces.Contest,
 	updateRatingBeforeContest time.Duration,
@@ -128,9 +139,18 @@ func shouldUpdateRatingChanges(
 		(time.Now().Before(endTime.Add(updateRatingChangesAfterContest)) || contest.Phase != "FINISHED"))
 }
 
+func shouldClearRatingChanges(
+	contest codeforces.Contest,
+	clearRatingChangesAfterContest time.Duration,
+) bool {
+	endTime := time.Unix(int64(contest.StartTimeSeconds+contest.DurationSeconds), 0)
+	return (contest.Phase == "FINISHED" && time.Now().After(endTime.Add(clearRatingChangesAfterContest)))
+}
+
 func (c *Cache) Update(
 	updateRatingBeforeContest time.Duration,
 	updateRatingChangesAfterContest time.Duration,
+	clearRatingChangesAfterContest time.Duration,
 ) error {
 	contests, err := codeforces.GetContestList(false)
 	if err != nil {
@@ -148,6 +168,10 @@ func (c *Cache) Update(
 			if err := c.UpdateContestRatingChanges(contest.ID); err != nil {
 				return err
 			}
+		}
+
+		if shouldClearRatingChanges(contest, clearRatingChangesAfterContest) {
+			c.ClearContestRatingChanges(contest.ID)
 		}
 	}
 
