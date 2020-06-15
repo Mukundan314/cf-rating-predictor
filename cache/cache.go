@@ -33,7 +33,7 @@ func (c *Cache) GetRating(handle string) int {
 	if v, ok := c.userRating[handle]; ok {
 		return v
 	} else {
-		return 1500
+		return 1400
 	}
 }
 
